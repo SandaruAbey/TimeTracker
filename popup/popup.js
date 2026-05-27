@@ -689,7 +689,7 @@ async function openDetail({ row, rowIndex }) {
   $('#detail-date-start').textContent = row[C.START]    || '—';
   $('#detail-due-time').textContent   = row[C.DUE_TIME] || '—';
 
-  const currentAlloc = parseTimeMins(row[C.ALLOC]) || '';
+  const currentAlloc = row[C.ALLOC] || '';
   populateSelectWithOptions('#detail-allocated-input', tabDropdowns[C.ALLOC] || DEFAULT_ALLOCATED_TIMES, '— None —', currentAlloc);
 
   $('#detail-spent-input').value      = parseTimeMins(row[C.SPENT]) || '';
@@ -744,8 +744,7 @@ async function doSaveStatus() {
   if (!currentTask) return;
   const morn = $('#detail-morning-status').value;
   const eve  = $('#detail-evening-status').value;
-  const allocRaw = $('#detail-allocated-input').value;
-  const alloc = allocRaw ? (parseInt(allocRaw) || '') : '';
+  const alloc = $('#detail-allocated-input').value || '';
   const spent = parseInt($('#detail-spent-input').value) || 0;
 
   showLoading(true);
@@ -759,8 +758,7 @@ async function doSaveStatus() {
       await sendMsg({ type: 'UPDATE_CELL', sheetId: config.sheetId, cellRef: `${tab}!${colLetter(C.EVENING)}${currentTask.rowIndex}`, value: eve });
       currentTask.row[C.EVENING] = eve;
     }
-    const prevAllocRaw = currentTask.row[C.ALLOC];
-    const prevAlloc = prevAllocRaw ? (parseTimeMins(prevAllocRaw) || '') : '';
+    const prevAlloc = currentTask.row[C.ALLOC] || '';
     if (alloc !== prevAlloc) {
       await sendMsg({ type: 'UPDATE_CELL', sheetId: config.sheetId, cellRef: `${tab}!${colLetter(C.ALLOC)}${currentTask.rowIndex}`, value: alloc });
       currentTask.row[C.ALLOC] = String(alloc);
@@ -1273,8 +1271,7 @@ async function doAddTask() {
   const title = $('#add-task-title').value.trim();
   const type = $('#add-task-type').value;
   const prio = $('#add-task-priority').value;
-  const allocVal = $('#add-task-allocated').value;
-  const alloc = allocVal ? (parseInt(allocVal) || '') : '';
+  const alloc = $('#add-task-allocated').value || '';
   const url = $('#add-task-url').value.trim();
 
   if (!proj) { toast('Please select Project Code', 'error'); return; }
