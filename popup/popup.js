@@ -374,14 +374,23 @@ async function doConnect() {
 // ═══════════════════════════════════════════════════════
 async function loadNames() {
   showLoading(true);
+  await loadDropdownOptions();
+
   const tabs = await sendMsg({ type: 'GET_SHEET_TABS', sheetId: config.sheetId });
   if (tabs?.error) { showLoading(false); toast(tabs.error, 'error'); return; }
 
-  const data = await sendMsg({ type: 'GET_SHEET_DATA', sheetId: config.sheetId, range: `'${tabs.tabs[0]}'!C:C` });
-  showLoading(false);
-  if (data?.error) { toast(data.error, 'error'); return; }
+  const tabDropdowns = getDropdownsForTab(tabs.tabs[0]);
+  let names = tabDropdowns[C.NAME] || [];
 
-  const names = [...new Set((data.rows || []).slice(1).map(r => r[0]).filter(Boolean))].sort();
+  if (names.length === 0) {
+    const data = await sendMsg({ type: 'GET_SHEET_DATA', sheetId: config.sheetId, range: `'${tabs.tabs[0]}'!C:C` });
+    if (data?.rows) {
+      names = [...new Set(data.rows.slice(1).map(r => r[0]).filter(Boolean))];
+    }
+  }
+
+  names = names.sort();
+  showLoading(false);
   const sel = $('#name-select');
   sel.innerHTML = '<option value="">— Select Your Name —</option>';
   names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
@@ -1255,7 +1264,7 @@ function populateSelectWithOptions(selector, options, placeholder, currentValue)
     const o = document.createElement('option');
     o.value = v;
     let label = v;
-    if (!isNaN(parseInt(v)) && !String(v).toLowerCase().includes('min')) {
+    if (/^\d+$/.test(String(v).trim())) {
       label = `${v} mins`;
     }
     o.textContent = label;
