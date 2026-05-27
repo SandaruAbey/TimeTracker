@@ -1,0 +1,19 @@
+# Keys and credentials
+*.pem
+*.json
+!manifest.json
+
+# Builds and extensions
+*.crx
+
+# Data sheets and documents
+*.xlsx
+*.csv
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local / Temp files
+.DS_Store
+Thumbs.db
