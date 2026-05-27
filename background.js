@@ -301,17 +301,36 @@ async function insertTaskRow(sheetId, tabName, userName, values) {
   await sheetsApi(`${SHEETS_BASE}/${sheetId}:batchUpdate`, {
     method: 'POST',
     body: JSON.stringify({
-      requests: [{
-        insertDimension: {
-          range: {
-            sheetId: numericSheetId,
-            dimension: 'ROWS',
-            startIndex: insertIdx,
-            endIndex: insertIdx + 1
-          },
-          inheritFromBefore: true // Copy formatting & data validation from row above
+      requests: [
+        {
+          insertDimension: {
+            range: {
+              sheetId: numericSheetId,
+              dimension: 'ROWS',
+              startIndex: insertIdx,
+              endIndex: insertIdx + 1
+            },
+            inheritFromBefore: true // Copy formatting & data validation from row above
+          }
+        },
+        {
+          repeatCell: {
+            range: {
+              sheetId: numericSheetId,
+              startRowIndex: insertIdx,
+              endRowIndex: insertIdx + 1,
+              startColumnIndex: 0,
+              endColumnIndex: 17
+            },
+            cell: {
+              userEnteredFormat: {
+                horizontalAlignment: 'CENTER'
+              }
+            },
+            fields: 'userEnteredFormat.horizontalAlignment'
+          }
         }
-      }]
+      ]
     })
   });
 
@@ -335,7 +354,7 @@ async function insertTaskRow(sheetId, tabName, userName, values) {
 }
 
 async function appendSheetRow(sheetId, tabName, values) {
-  return sheetsApi(
+  const res = await sheetsApi(
     `${SHEETS_BASE}/${sheetId}/values/${encodeURIComponent(tabName + '!A:A')}:append?valueInputOption=USER_ENTERED`,
     {
       method: 'POST',
@@ -346,6 +365,41 @@ async function appendSheetRow(sheetId, tabName, values) {
       })
     }
   );
+  try {
+    const updatedRange = res.updates?.updatedRange;
+    if (updatedRange) {
+      const match = updatedRange.match(/A(\d+):/);
+      if (match) {
+        const rowNum = parseInt(match[1]);
+        const numericSheetId = await getSheetNumericId(sheetId, tabName);
+        await sheetsApi(`${SHEETS_BASE}/${sheetId}:batchUpdate`, {
+          method: 'POST',
+          body: JSON.stringify({
+            requests: [{
+              repeatCell: {
+                range: {
+                  sheetId: numericSheetId,
+                  startRowIndex: rowNum - 1,
+                  endRowIndex: rowNum,
+                  startColumnIndex: 0,
+                  endColumnIndex: 17
+                },
+                cell: {
+                  userEnteredFormat: {
+                    horizontalAlignment: 'CENTER'
+                  }
+                },
+                fields: 'userEnteredFormat.horizontalAlignment'
+              }
+            }]
+          })
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Failed to center appended row:', e.message);
+  }
+  return res;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -890,10 +944,10 @@ async function addTask(sheetId, tabName, taskData) {
     row[COL.TARGET_DATE] = taskData.targetDate || '';
     row[COL.DATE_START] = dateStart;
     row[COL.DUE_TIME] = taskData.dueTime || '';
-    row[COL.ALLOCATED_TIME] = taskData.allocated;
-    row[COL.TODAYS_SPENT] = '0';
-    row[COL.TOTAL_MINS] = '0';
-    row[COL.TOTAL_WEEK] = '0';
+    row[COL.ALLOCATED_TIME] = taskData.allocated || '';
+    row[COL.TODAYS_SPENT] = '';
+    row[COL.TOTAL_MINS] = '';
+    row[COL.TOTAL_WEEK] = '';
     row[COL.EXTRA_MINS] = '';
     row[COL.COMPLETION_PCT] = '';
 

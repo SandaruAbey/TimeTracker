@@ -11,6 +11,7 @@ let cachedTasks = [];
 let selectedTab = '';
 let statusOptions = { morning: [], evening: [] };
 let dropdownOptions = {}; // Fetched from Google Sheets data validations
+const DEFAULT_ALLOCATED_TIMES = ['15', '30', '45', '60', '90', '120', '180', '240', '300', '360', '480'];
 let timerTick = null;       // local setInterval id
 let currentTimer = null;    // last known timer state
 let currentTask = null;     // task open in detail view
@@ -678,6 +679,7 @@ function renderTasks(tasks, tab) {
 // ═══════════════════════════════════════════════════════
 async function openDetail({ row, rowIndex }) {
   currentTask = { row: [...row], rowIndex };
+  const tabDropdowns = getDropdownsForTab(selectedTab);
 
   $('#detail-project').textContent    = row[C.PROJECT]  || '—';
   $('#detail-jira').textContent       = row[C.JIRA]     || 'Untitled';
@@ -686,14 +688,16 @@ async function openDetail({ row, rowIndex }) {
   $('#detail-target-date').textContent= row[C.TARGET]   || '—';
   $('#detail-date-start').textContent = row[C.START]    || '—';
   $('#detail-due-time').textContent   = row[C.DUE_TIME] || '—';
-  $('#detail-allocated-input').value  = parseTimeMins(row[C.ALLOC]) || '';
+
+  const currentAlloc = parseTimeMins(row[C.ALLOC]) || '';
+  populateSelectWithOptions('#detail-allocated-input', tabDropdowns[C.ALLOC] || DEFAULT_ALLOCATED_TIMES, '— None —', currentAlloc);
+
   $('#detail-spent-input').value      = parseTimeMins(row[C.SPENT]) || '';
   $('#detail-week-total').textContent = row[C.WEEK]     || '—';
   $('#detail-extra-mins').textContent = row[C.EXTRA]    || '—';
   $('#detail-completion-pct').textContent = row[C.COMPLETION_PCT] || '—';
   $('#detail-auto-code').textContent  = row[C.AUTO]     || '—';
   // Populate status & total selects from data validations or fallback to collected values
-  const tabDropdowns = getDropdownsForTab(selectedTab);
   const morningOpts = tabDropdowns[C.MORNING] || statusOptions.morning;
   const eveningOpts = tabDropdowns[C.EVENING] || statusOptions.evening;
   const totalOpts = tabDropdowns[C.TOTAL] || ['30 min', '1 hr', '1 hr & 30 min', '2 hr', '2 hr & 30 min', '3 hrs', '3 hr & 30 min', '4 hr', '10 min', '45 min', '5h', '15 min', '6 hr 30 min', '7 hr 30 min', '40 min', '20 min'];
@@ -740,7 +744,8 @@ async function doSaveStatus() {
   if (!currentTask) return;
   const morn = $('#detail-morning-status').value;
   const eve  = $('#detail-evening-status').value;
-  const alloc = parseInt($('#detail-allocated-input').value) || 0;
+  const allocRaw = $('#detail-allocated-input').value;
+  const alloc = allocRaw ? (parseInt(allocRaw) || '') : '';
   const spent = parseInt($('#detail-spent-input').value) || 0;
 
   showLoading(true);
@@ -754,7 +759,9 @@ async function doSaveStatus() {
       await sendMsg({ type: 'UPDATE_CELL', sheetId: config.sheetId, cellRef: `${tab}!${colLetter(C.EVENING)}${currentTask.rowIndex}`, value: eve });
       currentTask.row[C.EVENING] = eve;
     }
-    if (alloc !== parseTimeMins(currentTask.row[C.ALLOC])) {
+    const prevAllocRaw = currentTask.row[C.ALLOC];
+    const prevAlloc = prevAllocRaw ? (parseTimeMins(prevAllocRaw) || '') : '';
+    if (alloc !== prevAlloc) {
       await sendMsg({ type: 'UPDATE_CELL', sheetId: config.sheetId, cellRef: `${tab}!${colLetter(C.ALLOC)}${currentTask.rowIndex}`, value: alloc });
       currentTask.row[C.ALLOC] = String(alloc);
     }
@@ -1202,7 +1209,6 @@ async function doOpenSheet() {
 function prepareAddTaskForm() {
   // Clear form
   $('#add-task-title').value = '';
-  $('#add-task-allocated').value = '';
   $('#add-task-url').value = '';
   
   const tabDropdowns = getDropdownsForTab(selectedTab);
@@ -1215,6 +1221,9 @@ function prepareAddTaskForm() {
   
   // Priority dropdown
   populateSelect('#add-task-priority', tabDropdowns[C.PRIORITY] || ['High', 'Medium', 'Low'], '— Select —');
+  
+  // Allocated Time dropdown (Optional)
+  populateSelectWithOptions('#add-task-allocated', tabDropdowns[C.ALLOC] || DEFAULT_ALLOCATED_TIMES, '— Select (Optional) —', '');
 }
 
 function populateSelect(selector, options, placeholder) {
@@ -1228,17 +1237,48 @@ function populateSelect(selector, options, placeholder) {
   });
 }
 
+function populateSelectWithOptions(selector, options, placeholder, currentValue) {
+  const el = $(selector);
+  if (!el) return;
+  el.innerHTML = `<option value="">${placeholder}</option>`;
+  
+  const uniqueOpts = new Set(options.map(String));
+  if (currentValue && currentValue !== '0') {
+    uniqueOpts.add(String(currentValue));
+  }
+  
+  const sortedOpts = Array.from(uniqueOpts).sort((a, b) => {
+    const na = parseInt(a), nb = parseInt(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+
+  sortedOpts.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v;
+    let label = v;
+    if (!isNaN(parseInt(v)) && !String(v).toLowerCase().includes('min')) {
+      label = `${v} mins`;
+    }
+    o.textContent = label;
+    if (String(currentValue) === v) {
+      o.selected = true;
+    }
+    el.appendChild(o);
+  });
+}
+
 async function doAddTask() {
   const proj = $('#add-task-project').value.trim();
   const title = $('#add-task-title').value.trim();
   const type = $('#add-task-type').value;
   const prio = $('#add-task-priority').value;
-  const alloc = parseInt($('#add-task-allocated').value) || 0;
+  const allocVal = $('#add-task-allocated').value;
+  const alloc = allocVal ? (parseInt(allocVal) || '') : '';
   const url = $('#add-task-url').value.trim();
 
   if (!proj) { toast('Please select Project Code', 'error'); return; }
   if (!title) { toast('Please enter Task Title', 'error'); return; }
-  if (alloc <= 0) { toast('Please enter Allocated Time (mins)', 'error'); return; }
 
   showLoading(true);
   const r = await sendMsg({

@@ -246,7 +246,7 @@
         </div>
         <div class="dg-item">
           <label class="dg-label" for="detail-allocated-input">Allocated (m)</label>
-          <input type="number" id="detail-allocated-input" class="dg-input" min="0" placeholder="0">
+          <select id="detail-allocated-input" class="dg-select"></select>
         </div>
         <div class="dg-item highlight-cell">
           <label class="dg-label" for="detail-spent-input">Today Spent (m)</label>
@@ -460,7 +460,9 @@
       </div>
       <div class="form-group">
         <label for="add-task-allocated">Allocated Time (minutes)</label>
-        <input type="number" id="add-task-allocated" placeholder="e.g. 60, 120" class="input sm" min="1">
+        <select id="add-task-allocated" class="input sm">
+          <option value="">— Select —</option>
+        </select>
       </div>
       <div class="form-group">
         <label for="add-task-url">Web URL (optional)</label>
