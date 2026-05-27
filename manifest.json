@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "TimeTracker",
+  "version": "2.0.0",
+  "description": "Track work time per task and sync with Google Sheets \u2014 fully serverless",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "identity",
+    "storage",
+    "alarms",
+    "tabs",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://sheets.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "591426746483-qsrcjg72108q0gaqj7djttu0883t3m4g.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/content.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAscFdrwZNDa2ndw9HxhVa3syqQk47FDz5Rsa+fEh51F6ZOPHV4a77whgMtviFGZZq0U0Ws+MgiD+i/8Cjpwh5+MITywVJiuHVV8L5BX2rkObyfI0q7STB2wyTpjRc8aVAAH57pcNZlyLlG4DMxnrl46oWp10gYUKBi5ndQfaUyyNNynShE9X2Iwq2aQLepso5P/ZHWmJwCEN3PPnwgd5nnEEGSdO+J9PJieuYW17d2SuaVJeiJ13/k5nM6lu2xA8qevpWmKoaf1tVFy8I4Z4TeGRW8rtrgikNtnY9kahBCrjgHU3xk63s3xpa2WHW4RSjiaewqjVqXr8a8FV3xhPSRQIDAQAB"
+}
