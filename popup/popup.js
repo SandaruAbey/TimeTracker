@@ -704,7 +704,8 @@ async function openDetail({ row, rowIndex }) {
   $('#detail-spent-input').value      = parseTimeMins(row[C.SPENT]) || '';
   $('#detail-week-total').textContent = row[C.WEEK]     || '—';
   $('#detail-extra-mins').textContent = row[C.EXTRA]    || '—';
-  $('#detail-completion-pct').textContent = row[C.COMPLETION_PCT] || '—';
+  const completionOpts = tabDropdowns[C.COMPLETION_PCT] || ['0%', '10%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '100%'];
+  populateSelectWithOptions('#detail-completion-select', completionOpts, '— None —', row[C.COMPLETION_PCT] || '');
   $('#detail-auto-code').textContent  = row[C.AUTO]     || '—';
   // Populate status & total selects from data validations or fallback to collected values
   const morningOpts = tabDropdowns[C.MORNING] || statusOptions.morning;
@@ -793,6 +794,11 @@ async function doSaveStatus() {
     if (totalVal !== (currentTask.row[C.TOTAL] || '')) {
       await sendMsg({ type: 'UPDATE_CELL', sheetId: config.sheetId, cellRef: `${tab}!${colLetter(C.TOTAL)}${currentTask.rowIndex}`, value: totalVal });
       currentTask.row[C.TOTAL] = totalVal;
+    }
+    const completionPct = $('#detail-completion-select').value || '';
+    if (completionPct !== (currentTask.row[C.COMPLETION_PCT] || '')) {
+      await sendMsg({ type: 'UPDATE_CELL', sheetId: config.sheetId, cellRef: `${tab}!${colLetter(C.COMPLETION_PCT)}${currentTask.rowIndex}`, value: completionPct });
+      currentTask.row[C.COMPLETION_PCT] = completionPct;
     }
     toast('Changes saved!', 'success');
   } catch (e) { toast(e.message, 'error'); }
